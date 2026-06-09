@@ -106,10 +106,11 @@ menuentry "Alpine Linux RAM-only VPN" {
     
     # Boot kernel dengan parameter RAM-only (diskless)
     # console=tty0 dan console=ttyS0 untuk output IPMI Serial Console
-    linux /boot/vmlinuz-virt alpine_dev=UUID=$PART_UUID apkovl=UUID=$PART_UUID:/localhost.apkovl.tar.gz modloop=UUID=$PART_UUID:/boot/modloop-virt console=tty0 console=ttyS0,115200
+    linux /boot/vmlinuz-virt modules=loop,squashfs,sd-mod alpine_dev=UUID=$PART_UUID modloop=/boot/modloop-virt apkovl=/localhost.apkovl.tar.gz console=tty0 console=ttyS0,115200
     
     # Muat initramfs ke RAM
     initrd /boot/initramfs-virt
+
 }
 EOF
 

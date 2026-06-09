@@ -49,8 +49,9 @@ menuentry "Alpine Linux RAM-only VPN" --class gnu-linux --class gnu --class os {
     insmod xfs
     insmod btrfs
     search --no-floppy --fs-uuid --set=root $BOOT_UUID
-    linux /boot/vmlinuz-virt alpine_dev=UUID=$BOOT_UUID apkovl=UUID=$BOOT_UUID:/boot/localhost.apkovl.tar.gz modloop=UUID=$BOOT_UUID:/boot/modloop-virt console=tty0 console=ttyS0,115200
+    linux /boot/vmlinuz-virt modules=loop,squashfs,sd-mod alpine_dev=UUID=$BOOT_UUID modloop=/boot/modloop-virt apkovl=/boot/localhost.apkovl.tar.gz console=tty0 console=ttyS0,115200
     initrd /boot/initramfs-virt
+
 }
 EOF
 
