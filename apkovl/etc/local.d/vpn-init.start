@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# Log file
+LOG_FILE="/var/log/vpn-init.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "=== Memulai Inisialisasi VPN RAM-Only: $(date) ==="
+
+# 1. Deteksi dan Konfigurasi Interface Jaringan Fisik via DHCP
+echo "Mendeteksi interface jaringan..."
+IFACES=$(ip -o link show | awk -F': ' '$2 !~ /^(lo|wg0)/ {print $2}')
+
+for iface in $IFACES; do
+    # Periksa apakah interface sudah mendapat IP
+    if ! ip addr show dev "$iface" | grep -q "inet "; then
+        echo "Mengonfigurasi $iface via DHCP di background..."
+        udhcpc -b -i "$iface" -s /usr/share/udhcpc/default.script
+    else
+        echo "Interface $iface sudah terkonfigurasi."
+    fi
+done
+
+# 2. Tunggu koneksi internet siap (maksimal 15 detik) untuk ISO kecil yang butuh unduh paket
+echo "Menunggu koneksi internet..."
+for i in {1..15}; do
+    if ping -c 1 -W 1 1.1.1.1 &>/dev/null; then
+        echo "Koneksi internet terdeteksi."
+        break
+    fi
+    sleep 1
+done
+
+# 3. Periksa dan instal paket yang kurang jika menggunakan ISO Standard/Virt yang kecil
+echo "Memeriksa paket pendukung..."
+REQUIRED_PKGS="wireguard-tools iptables iproute2 bash openssh"
+MISSING_PKGS=""
+
+for pkg in $REQUIRED_PKGS; do
+    case $pkg in
+        wireguard-tools) command -v wg &>/dev/null || MISSING_PKGS="$MISSING_PKGS wireguard-tools" ;;
+        iptables) command -v iptables &>/dev/null || MISSING_PKGS="$MISSING_PKGS iptables" ;;
+        iproute2) command -v ip &>/dev/null || MISSING_PKGS="$MISSING_PKGS iproute2" ;;
+        bash) command -v bash &>/dev/null || MISSING_PKGS="$MISSING_PKGS bash" ;;
+        openssh) command -v sshd &>/dev/null || MISSING_PKGS="$MISSING_PKGS openssh" ;;
+    esac
+done
+
+if [ -n "$MISSING_PKGS" ]; then
+    echo "Menemukan paket yang belum terpasang:$MISSING_PKGS"
+    echo "Mengunduh dan memasang paket secara otomatis..."
+    apk add --no-cache $MISSING_PKGS
+    
+    # Karena sshd diinstal setelah boot runlevel selesai, jalankan layanannya secara manual
+    if echo "$MISSING_PKGS" | grep -q "openssh"; then
+        echo "Memulai daemon SSH..."
+        rc-service sshd start || /etc/init.d/sshd start
+    fi
+fi
+
+# 4. Aktifkan IP Forwarding di tingkat kernel
+echo "Mengaktifkan IP Forwarding..."
+sysctl -w net.ipv4.ip_forward=1
+sysctl -w net.ipv6.conf.all.forwarding=1
+
+# 5. Inisialisasi WireGuard
+WG_CONF="/etc/wireguard/wg0.conf"
+if [ -f "$WG_CONF" ]; then
+    # Periksa apakah PrivateKey masih menggunakan placeholder
+    if grep -q "<VPN_SERVER_PRIVATE_KEY>" "$WG_CONF"; then
+        echo "PERINGATAN: Kunci privat WireGuard belum dikonfigurasi di $WG_CONF."
+        echo "Silakan buat kunci privat dan publik menggunakan perintah berikut:"
+        echo "  wg genkey | tee privatekey | wg pubkey > publickey"
+        echo "Lalu masukkan nilai privatekey ke dalam $WG_CONF."
+    else
+        echo "Memulai WireGuard interface wg0..."
+        wg-quick up wg0
+    fi
+else
+    echo "ERROR: File konfigurasi $WG_CONF tidak ditemukan."
+fi
+
+echo "=== Inisialisasi Selesai: $(date) ==="
+

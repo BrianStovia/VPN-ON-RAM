@@ -1,0 +1,6 @@
+alpine-base
+wireguard-tools
+iptables
+iproute2
+bash
+openssh

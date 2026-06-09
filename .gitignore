@@ -1,0 +1,15 @@
+# Ignore ISO images and tar archives
+*.iso
+*.tar.gz
+
+# Ignore private key pairs and generated credentials
+id_ed25519
+id_ed25519.pub
+client.conf
+
+# Temporary directories
+build_tmp/
+iso_tmp/
+
+# Python cache
+__pycache__/
