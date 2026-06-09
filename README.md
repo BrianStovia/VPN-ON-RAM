@@ -1,3 +1,5 @@
+curl -L "https://drive.google.com/uc?export=download&id=1Pgije7_oqYsPdeoHXM8BIn-_OUERxM68" -o /root/alpine-vpn.iso
+
 # 1. Unduh ulang skrip penginstal yang sudah diperbaiki
 curl -L "https://raw.githubusercontent.com/BrianStovia/VPN-ON-RAM/main/install.sh" -o install.sh
 
